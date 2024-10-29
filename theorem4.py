@@ -28,18 +28,3 @@ def delta(lambda_val, gamma, eigenvalues, m_F_zero):
         return gamma / ((1 - gamma) * m_F_zero)
     else:
         return 0
-
-# Example usage
-eigenvalues = np.array([0.1, 0.5, 1.0, 1.5])  # Example eigenvalues
-gamma = 0.2     # Ratio γ < 1
-
-# Compute δ(λ) for a given lambda_val and m_F_z
-lambda_val = eigenvalues[0]   # Assume a sample eigenvalue λ
-m_F_zero = stieltjes_transform(0, eigenvalues)
-
-delta_value = delta(lambda_val, gamma, eigenvalues, m_F_zero)
-print("δ(λ) 的值:", delta_value)
-
-# Calculate δ(0) for γ < 1 using m_F(0)
-delta_zero = delta(0, gamma, eigenvalues, m_F_zero)
-print("當 λ = 0 且 γ < 1 時, δ(0) 的值:", delta_zero)

@@ -1,12 +1,7 @@
 import numpy as np
 from scipy.integrate import quad
-from scipy.optimize import root
 from scipy.optimize import newton
 
-# Test Sample
-n = 10  # Sample size
-p = 5   # Number of Dimensions
-t = np.random.uniform(0, 1, p)  # Sample Eigenvalues List
 
 def stieltjes_transform(z, t, n, p):
     """
@@ -18,7 +13,7 @@ def stieltjes_transform(z, t, n, p):
     :return: Stieltjes transformed m
     """
     def func(m):
-        return m - (1 / p) * np.sum(t / (t * (1 - p / n * m) - z)) 
+        return m - (1 / p) * np.sum(1 / (t*(1 - p/n - p/n*z*m) - z+ 1e-8)) 
     
     initial_guess = 0.5
     solution = newton(func, initial_guess, maxiter=200)
@@ -36,14 +31,14 @@ def f_n_p_x(x, t, n, p):
     """
     if x == 0:
         term1 = 1 - n / p
-        term2 = 1 - (1 / p) * np.sum([1 if ti == 0 else 0 for ti in t])
+        term2 = (1 / p) * np.sum([1 if ti == 0 else 0 for ti in t])
         return max(term1, term2)
     else:
         def integrand(xi):
             m_t = stieltjes_transform(xi + 1e-10j, t, n, p) # Set a extreme small value to replace the lim problem
             return np.imag(m_t)
         
-        integral, _ = quad(integrand, -np.inf, x, limit=100)
+        integral, _ = quad(integrand, -10, x, limit=50) # Should be -inf but it's too time-consuming
         return (1 / np.pi) * integral
 
 def inverse_f_n_p(u, t, n, p):
@@ -55,10 +50,10 @@ def inverse_f_n_p(u, t, n, p):
     :param p: Number of Dimensions
     :return: x which makes F_{n,p}^t(x) <= u
     """
-    x_values = np.linspace(-3, 3, 1000)
+    x_values = np.linspace(-10, 10, 1000)
     f_values = [f_n_p_x(x, t, n, p) for x in x_values]
     eligible_x = [x for x, F in zip(x_values, f_values) if F <= u]
-    print(max(eligible_x))
+    # print(max(eligible_x))
     return max(eligible_x) if eligible_x else None
 
 def quantized_eigenvalue(i, t, n, p):
@@ -70,27 +65,10 @@ def quantized_eigenvalue(i, t, n, p):
     :param p: Number of Dimensions
     :return: q_{n,p}^i(t)
     """
-    lower_bound = (i - 1) / p
     upper_bound = i / p
+    lower_bound = (i - 1) / p
     def integrand(u):
         return inverse_f_n_p(u, t, n, p)
     
     integral, _ = quad(integrand, lower_bound, upper_bound)
     return p * integral
-
-# 測試
-# z = 1 + 1j  # 複數 z 的例子
-# m = stieltjes_transform(z, t, n, p)
-# print("Stieltjes 變換 m:", m)
-
-# x = 0.5  # x 的例子
-# f_val = f_n_p_x(x, t, n, p)
-# print("分布函數 F_{n,p}^t(x):", f_val)
-
-# u = 0.5  # 逆分布函數的例子
-# inverse_f_val = inverse_f_n_p(u, t, n, p)
-# print("逆分布函數 (F_{n,p}^t)^{-1}(u):", inverse_f_val)
-
-i = 1  # 第 i 個特徵值的量化
-quantized_val = quantized_eigenvalue(i, t, n, p)
-print(f"Quantized Eigenvalue q_{{n,p}}^{i}(t):", quantized_val)

@@ -1,44 +1,40 @@
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from QuEST import quantized_eigenvalue
+from theorem4 import delta, stieltjes_transform
 
-def stieltjes_transform(eigenvalues, z):
-    """
-    計算 Stieltjes 變換 m_F(z)
-    
-    :param eigenvalues: 樣本特徵值列表 (array-like)
-    :param z: 複數變量 z
-    :return: Stieltjes 變換的結果 m_F(z)
-    """
-    N = len(eigenvalues)
-    m_F_z = np.mean(1 / (eigenvalues - z))  # Stieltjes 變換公式
-    return m_F_z
+data = pd.read_csv('data\SP500_Price.csv', index_col = 0)
+data = np.array(data)
+data = 100*(np.log(data[1:,:])-np.log(data[:-1,:]))
+column_mean = np.mean(data, axis=0)
+demeaned_matrix = data - column_mean
+cov_matrix = np.dot(data.T, data)
 
-def nonlinear_shrinkage(eigenvalues, gamma):
-    """
-    根據 Ledoit 和 Péché 的公式計算非線性收縮特徵值
-    :param eigenvalues: 樣本特徵值列表 (array-like)
-    :param gamma: 維數與樣本數之比
-    :return: 收縮後的特徵值
-    """
-    # Stieltjes Transform
-    m_F_values = stieltjes_transform(eigenvalues, gamma)
-    
-    # Non-Linear
-    shrunk_eigenvalues = []
-    for i, lam in enumerate(eigenvalues):
-        m_F = m_F_values[i]
-        correction_factor = abs(1 - gamma**(-1) - gamma**(-1) * lam * m_F)**2
-        if correction_factor != 0:
-            shrunk_lambda = lam / correction_factor
-        else:
-            shrunk_lambda = 0  # 避免除以零的情況
-        shrunk_eigenvalues.append(shrunk_lambda)
-    
-    return np.array(shrunk_eigenvalues)
 
-# 假設你給出特徵值
-eigenvalues = np.array([3.0, 2.5, 1.5, 0.8])  # 這裡是你計算出的特徵值
-gamma = 0.6  # γ 是樣本數與維度之比，你可以根據你的數據設置
+# 1. Eigenvalues
+population_eigenvalues, population_eigenvectors = np.linalg.eig(cov_matrix)
+N = data.shape[1]
+P = data.shape[0]
+gamma = N/P 
 
-# 計算收縮後的特徵值
-shrunk_eigenvalues = nonlinear_shrinkage(eigenvalues, gamma)
-print("收縮後的特徵值:", shrunk_eigenvalues)
+
+# 2. QuEST
+estimated_population_eigenvalues = []
+for i in range(len(population_eigenvalues)):
+    quantized_val = quantized_eigenvalue(i, t=population_eigenvalues, n=N, p=P)
+    estimated_population_eigenvalues.append(quantized_val)
+print(estimated_population_eigenvalues)
+
+
+# 3. Theorem 4
+delta_values = []
+m_F_zero = stieltjes_transform(0, estimated_population_eigenvalues)
+for i in range(len(population_eigenvalues)):
+    delta_value = delta(lambda_val=i, gamma=gamma, eigenvalues=estimated_population_eigenvalues, m_F_zero=m_F_zero)
+    delta_values.append(delta_value)
+
+
+
+# shrunk_eigenvalues = nonlinear_shrinkage(eigenvalues, gamma)
+# print("收縮後的特徵值:", shrunk_eigenvalues)
